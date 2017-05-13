@@ -1,0 +1,81 @@
+package com.cts.controller;
+
+import java.io.IOException;
+import java.io.StringWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.HashMap;
+
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import com.cts.command.RegistrationCommand;
+import com.cts.form.RegistrationForm;
+import com.cts.form.ServiceRequest;
+import com.cts.framework.RestService;
+import com.cts.properties.ServiceProperties;
+import com.cts.response.RegistrationResponse;
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+
+@Controller
+public class RegisreationController extends BaseController {
+	private static Logger LOGGER = Logger.getLogger(RegisreationController.class);
+
+	@Autowired
+	private ServiceProperties serviceProp;
+
+	@RequestMapping(value = "/adc/service/customer/register", method = RequestMethod.POST)
+	public @ResponseBody RegistrationResponse getLomacoToken(@RequestBody RegistrationForm register) {
+
+		LOGGER.info(RegisreationController.class + ":");
+		// SessionObject sessionObject = getSessionObject();
+		RegistrationResponse registreationResponse = null;
+
+		// LOGGER.info("getCustId() Id:::::::::::::::::::::::::::::::::" +
+		// sessionObject.getCustId());
+
+		if (register != null) {
+			RestService service = new RegistrationCommand();
+			ServiceRequest req = new ServiceRequest();
+			updateServiceRequest(req, getUpdatedUrl(serviceProp.getRegisterURL()));
+			req.setHttpMethod(getRequest().getMethod());
+			req.setRequestInfo(register);
+			registreationResponse = (RegistrationResponse) service.execute(req);
+
+			/*
+			 * if (lomacoTokenResponse == null) { throw new
+			 * InvalidResponseException("Unable to Create LomacoTokenResponse."
+			 * ); } else if (errorMessage(lomacoTokenResponse)) { return
+			 * lomacoTokenResponse;
+			 * 
+			 * throw new
+			 * CustomerAddressException(lomacoTokenResponse.getMessages ()
+			 * .getAllErrors());
+			 * 
+			 * } } else { if
+			 * (StringUtils.isBlank(lomacoTokenForm.getCustomerId()) &&
+			 * StringUtils.isBlank(lomacoTokenForm.getMobileNumber())) { throw
+			 * new InvalidResponseException(
+			 * "Unable to invoke lomaco fetch token service since customerid and mobile number are empty."
+			 * ); } else if
+			 * (StringUtils.isBlank(lomacoTokenForm.getCustomerId())) { throw
+			 * new InvalidResponseException(
+			 * "Unable to invoke lomaco fetch token service since customerid is empty."
+			 * ); } else { throw new InvalidResponseException(
+			 * "Unable to invoke lomaco fetch token service since mobile number is empty."
+			 * ); } }
+			 * 
+			 * }
+			 */
+			return registreationResponse;
+		}
+		return registreationResponse;
+	}
+}

@@ -1,0 +1,5 @@
+package com.cts.dao.responses;
+
+public class RegistreationSuccess {
+
+}

@@ -1,0 +1,6 @@
+package com.cts.dao;
+
+@Controller
+public class RegistreationResponse {
+
+}

@@ -1,0 +1,213 @@
+package com.cts.form;
+
+import java.io.Serializable;
+
+public class ServiceRequest implements Serializable {
+	private String endPoint;
+	private String httpMethod;
+	private BaseInfo requestInfo;
+
+	public String getEndPoint() {
+		return endPoint;
+	}
+
+	public void setEndPoint(String endPoint) {
+		this.endPoint = endPoint;
+	}
+
+	public String getHttpMethod() {
+		return httpMethod;
+	}
+
+	public void setHttpMethod(String httpMethod) {
+		this.httpMethod = httpMethod;
+	}
+
+	public BaseInfo getRequestInfo() {
+		return requestInfo;
+	}
+
+	public void setRequestInfo(BaseInfo requestInfo) {
+		this.requestInfo = requestInfo;
+	}
+}
+package com.abbott.adc.util;
+
+import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+
+import org.apache.log4j.Logger;
+
+public class TokenManager 
+{
+	private static final Logger LOGGER = Logger.getLogger(TokenManager.class);
+	/**
+	 * The token parameter name
+	 */
+	static final String CSRF_PARAM_NAME = CommonConstant.APP_TOKEN;
+
+	/**
+	 * The location on the session which stores the token
+	 */
+	private final static String CSRF_TOKEN_FOR_SESSION_ATTR_NAME = TokenManager.class.getName() + ".tokenval";
+
+	public static String getTokenForSession (HttpSession session) {
+		String token = null;
+		// I cannot allow more than one token on a session - in the case of two requests trying to
+		// init the token concurrently
+		if( session != null )
+		{
+			synchronized (session) {
+				token = (String) session.getAttribute(CSRF_TOKEN_FOR_SESSION_ATTR_NAME);
+				if (null==token) {
+					token=UUID.randomUUID().toString();
+					session.setAttribute(CSRF_TOKEN_FOR_SESSION_ATTR_NAME, token);
+				}
+			}
+			LOGGER.info(" getTokenForSession TOKEN VALUE :::::::::: "+token);
+		}
+		return token;
+	}
+
+	/**
+	 * Extracts the token value from the session
+	 * @param request
+	 * @return
+	 */
+	public static String getTokenFromHeader(HttpServletRequest request) 
+	{
+		String reqToken = null;
+		if( request.getHeader(CSRF_PARAM_NAME) != null )
+		{
+			reqToken = request.getHeader(CSRF_PARAM_NAME);
+		}
+		else
+		{
+			reqToken = request.getHeader("apptoken");
+		}
+		return reqToken;
+	}
+
+	public static String getNextToken(HttpSession session)
+	{
+		String token = null;
+		// I cannot allow more than one token on a session - in the case of two requests trying to
+		// init the token concurrently
+		if( session != null )
+		{
+			synchronized (session) {				
+				token=UUID.randomUUID().toString();
+				session.setAttribute(CSRF_TOKEN_FOR_SESSION_ATTR_NAME, token);				
+			}
+		}
+		LOGGER.info(" getNextToken TOKEN VALUE :::::::::: "+token);
+		return token;
+	}
+}
+package com.abbott.adc.interceptors;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.log4j.Logger;
+import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.ModelAndView;
+
+
+
+import com.abbott.adc.util.CommonConstant;
+import com.abbott.adc.util.TokenManager;
+
+public class SyncTokenInterceptor implements HandlerInterceptor 
+{
+	private static final Logger LOGGER = Logger.getLogger(SyncTokenInterceptor.class);
+	
+	@Override
+	public void afterCompletion(HttpServletRequest request,
+			HttpServletResponse response, Object arg2, Exception arg3)
+			throws Exception {
+		
+		LOGGER.debug("AFTER COMPLETE");
+
+	}
+
+	@Override
+	public void postHandle(HttpServletRequest request, HttpServletResponse response,
+			Object arg2, ModelAndView arg3) throws Exception {
+				
+		LOGGER.debug("POST HANDLE");
+
+	}
+
+	@Override
+	public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
+			Object arg2) throws Exception {
+		// TODO Auto-generated method stub
+		
+		/*String uri =request.getRequestURI();
+		
+		String value[] =uri.split("/");
+		
+		String currencyCode = value[3];
+		*/
+		
+		LOGGER.info("PRE HANDLE MATHOD ::: "+request.getMethod());
+		LOGGER.info("Access-Control-Request-Method :: "+request.getHeader("Access-Control-Request-Method"));
+		//response.setHeader("Access-Control-Allow-Origin", "*");
+	    //response.setCharacterEncoding("UTF-8");
+	    //response.setHeader("Access-Control-Allow-Methods", "POST,PUT,DELETE,UPDATE,GET");
+	    //response.setHeader("Access-Control-Allow-Headers", "x-requested-with");
+		
+		if(! request.getMethod().equalsIgnoreCase("OPTIONS") )
+		{
+			if (request.getMethod().equalsIgnoreCase("GET") 
+					|| "GET".equalsIgnoreCase(request.getHeader("Access-Control-Request-Method")) )
+			{
+				// Not a POST - allow the request
+				String sessionToken = TokenManager.getTokenForSession(request.getSession());
+				String requestToken = TokenManager.getTokenFromHeader(request);
+				LOGGER.info("GET sessionToken "+request.getRequestURI()+ " ---------------"+sessionToken);
+				LOGGER.info("GET requestToken  "+request.getRequestURI()+ " --------------"+requestToken);
+				if(requestToken == null)
+				{
+					response.setHeader(CommonConstant.APP_TOKEN, TokenManager.getNextToken(request.getSession()));
+				}
+				else
+				{
+					response.setHeader(CommonConstant.APP_TOKEN, sessionToken);
+				}				
+				return true;
+			} 
+			else 
+			{
+				/*// This is a POST request - need to check the CSRF token
+				String sessionToken = TokenManager.getTokenForSession(request.getSession());
+				String requestToken = TokenManager.getTokenFromHeader(request);
+				LOGGER.info("PRE HANDLE IN POST/PUT/DELETE BLOCK sessionToken  "+request.getRequestURI()+ "-------"+sessionToken);
+				LOGGER.info("PRE HANDLE IN POST/PUT/DELETE BLOCK requestToken  "+request.getRequestURI()+ "-------"+requestToken);
+				if (sessionToken.equals(requestToken)) 
+				{
+					response.setHeader(CommonConstant.APP_TOKEN, TokenManager.getNextToken(request.getSession()));
+					LOGGER.info("----------- TOKEN IS VALID ---------------------");
+					return true;
+					
+				} 
+				else 
+				{
+					LOGGER.info("----------- TOKEN IS NOT VALID ---------------------");				
+					response.sendError(HttpServletResponse.SC_FORBIDDEN, "Bad or missing CSRF value");
+					return false;
+					//throw new InvalidTokenException("Invalid Token");
+				}
+				//return true; // comment after testing
+*/			}			
+			return true;
+		}
+		else
+		{
+			return true;
+		}				
+	}
+}

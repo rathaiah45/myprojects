@@ -1,0 +1,9 @@
+package com.cts.dao;
+
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Controller
+@RequestMapping(value="/",method=RequestMethod.POST)
+public class RegistreationResponse {
+
+}
